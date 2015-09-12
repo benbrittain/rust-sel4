@@ -69,6 +69,21 @@ TYPES = {
     64: "u64"
 }
 
+TYPE_TRANS = {
+    "int": "isize",
+    "seL4_Uint8": "u8",
+    "seL4_Uint16": "u16",
+    "seL4_Uint32": "u32",
+    "seL4_Uint64": "u64",
+    "seL4_Bool": "u8",
+}
+
+def translate_type(name):
+    if name in TYPE_TRANS:
+        return TYPE_TRANS[name]
+    else:
+        return name
+
 class Type(object):
     """
     This class represents a C type (such as an 'int', structure or
@@ -107,7 +122,7 @@ class Type(object):
         """
         if name == "type":
             name = "type_"
-        return "%s: %s" % (name, self.name)
+        return "%s: %s" % (name, translate_type(self.name))
 
     def pointer(self):
         """
@@ -145,7 +160,7 @@ class PointerType(Type):
     def render_parameter_name(self, name):
         if name == "type":
             name = "type_"
-        return "%s: *mut %s" % (name, self.name)
+        return "%s: *mut %s" % (name, translate_type(self.name))
 
     def c_expression(self, var_name, word_num=0):
         assert word_num == 0
