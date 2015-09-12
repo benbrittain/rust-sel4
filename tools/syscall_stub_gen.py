@@ -502,7 +502,7 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     #   {
     #
     result.append("#[inline(always)]")
-    result.append("pub fn %s_%s(%s) -> %s" % (interface_name, method_name,
+    result.append("pub unsafe fn %s_%s(%s) -> %s" % (interface_name, method_name,
         generate_param_list(input_params, output_params), return_type))
     result.append("{")
 
