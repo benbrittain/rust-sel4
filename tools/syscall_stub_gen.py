@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #
+# Copyright 2015, Corey Richardson
 # Copyright 2014, NICTA
 #
 # This software may be distributed and modified according to the terms of
@@ -61,16 +62,11 @@ MESSAGE_REGISTERS_FOR_ARCH = {
     "x86": 2,
 }
 
-# Headers to include
-INCLUDES = [
-    'autoconf.h', 'sel4/types.h'
-]
-
 TYPES = {
-    8:  "seL4_Uint8",
-    16: "seL4_Uint16",
-    32: "seL4_Uint32",
-    64: "seL4_Uint64"
+    8:  "u8",
+    16: "u16",
+    32: "u32",
+    64: "u64"
 }
 
 class Type(object):
@@ -109,7 +105,9 @@ class Type(object):
         Return a string of C code that would be used in a function
         parameter declaration.
         """
-        return "%s %s" % (self.name, name)
+        if name == "type":
+            name = "type_"
+        return "%s: %s" % (name, self.name)
 
     def pointer(self):
         """
@@ -129,12 +127,12 @@ class Type(object):
     def double_word_expression(self, var_name, word_num):
 
         assert(word_num == 0 or word_num == 1)
-        
+
         if word_num == 0:
-            return "({0}) {1}".format(TYPES[WORD_SIZE_BITS], var_name)
+            return "{1} as {0}".format(TYPES[WORD_SIZE_BITS], var_name)
         elif word_num == 1:
-            return "({0}) ({1} >> {2})".format(TYPES[WORD_SIZE_BITS], var_name, WORD_SIZE_BITS)
-        
+            return "({1} >> {2}) as {0}".format(TYPES[WORD_SIZE_BITS], var_name, WORD_SIZE_BITS)
+
 
 class PointerType(Type):
     """
@@ -145,11 +143,13 @@ class PointerType(Type):
         self.base_type = base_type
 
     def render_parameter_name(self, name):
-        return "%s *%s" % (self.name, name)
+        if name == "type":
+            name = "type_"
+        return "%s: *mut %s" % (name, self.name)
 
     def c_expression(self, var_name, word_num=0):
         assert word_num == 0
-        return "*%s" % var_name
+        return "unsafe { *%s }" % var_name
 
     def pointer(self):
         raise NotImplementedError()
@@ -173,7 +173,7 @@ class StructType(Type):
 
         # Multiword structure.
         assert self.pass_by_reference()
-        return "%s->%s" % (var_name, member_name[word_num])
+        return "(*%s).%s" % (var_name, member_name[word_num])
 
 class BitFieldType(Type):
     """
@@ -181,11 +181,11 @@ class BitFieldType(Type):
     """
     def __init__(self, name, size_bits):
         Type.__init__(self, name, size_bits)
-    
+
     def c_expression(self, var_name, word_num=0):
-        
+
         return "%s.words[%d]" % (var_name, word_num)
-        
+
 class Parameter(object):
     def __init__(self, name, type):
         self.name = name
@@ -443,14 +443,12 @@ def generate_result_struct(interface_name, method_name, output_params):
     #   typedef struct seL4_CNode_Copy seL4_CNode_Copy_t;
     #
     result = []
-    result.append("struct %s_%s {" % (interface_name, method_name))
-    result.append("\tint error;")
+    result.append("#[repr(C)] pub struct %s_%s {" % (interface_name, method_name))
+    result.append("\terror: isize,")
     for i in output_params:
         if not i.type.pass_by_reference():
-            result.append("\t%s;" % i.type.render_parameter_name(i.name))
-    result.append("};")
-    result.append("typedef struct %s_%s %s_%s_t;" % (
-            (interface_name, method_name, interface_name, method_name)))
+            result.append("\t%s," % i.type.render_parameter_name(i.name))
+    result.append("}")
     result.append("")
 
     return "\n".join(result)
@@ -476,10 +474,10 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     returning_struct = False
     results_structure = generate_result_struct(interface_name, method_name, output_params)
     if results_structure:
-        return_type = "%s_%s_t" % (interface_name, method_name)
+        return_type = "%s_%s" % (interface_name, method_name)
         returning_struct = True
     else:
-        return_type = "int"
+        return_type = "isize"
 
     #
     # Print function header.
@@ -488,9 +486,9 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     #   seL4_Untyped_Retype(...)
     #   {
     #
-    result.append("static inline %s" % return_type)
-    result.append("%s_%s(%s)" % (interface_name, method_name,
-        generate_param_list(input_params, output_params)))
+    result.append("#[inline(always)]")
+    result.append("pub fn %s_%s(%s) -> %s" % (interface_name, method_name,
+        generate_param_list(input_params, output_params), return_type))
     result.append("{")
 
     #
@@ -511,9 +509,9 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     # Setup variables we will need.
     #
     if returning_struct:
-        result.append("\t%s result;" % return_type)
-    result.append("\tseL4_MessageInfo_t tag = seL4_MessageInfo_new(%s, 0, %d, %d);"  % (method_id, len(cap_expressions), len(input_expressions)))
-    result.append("\tseL4_MessageInfo_t output_tag;")
+        result.append("\tlet mut result: %s;" % return_type)
+    result.append("\tlet tag = seL4_MessageInfo::new(%s, 0, %d, %d);"  % (method_id, len(cap_expressions), len(input_expressions)))
+    result.append("\tlet mut output_tag;")
     for i in range(min(num_mrs, max(input_param_words, output_param_words))):
         result.append("\tseL4_Word mr%d;" % i)
     result.append("")
@@ -540,6 +538,8 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     if len(input_expressions) > 0:
         result.append("\t/* Marshal input parameters. */")
         for i in range(len(input_expressions)):
+            if input_expressions[i] == "type":
+                input_expressions[i] = "type_"
             if i < num_mrs:
                 result.append("\tmr%d = %s;" % (i, input_expressions[i]))
             else:
@@ -552,9 +552,9 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     call_arguments = []
     for i in range(num_mrs):
         if i < max(input_param_words, output_param_words):
-            call_arguments.append("&mr%d" % i)
+            call_arguments.append("&mut mr%d" % i)
         else:
-            call_arguments.append("seL4_Null")
+            call_arguments.append("std::ptr::null_mut()")
     if use_only_ipc_buffer:
         result.append("\t/* Perform the call. */")
         result.append("\toutput_tag = seL4_Call(%s, tag);" % service_cap)
@@ -581,7 +581,7 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
             if param.type.pass_by_reference():
                 members = struct_members(param.type, structs);
                 for i in range(len(words)):
-                    result.append("\t%s->%s = %s;" % (param.name, members[i], words[i] % source_words))
+                    result.append("\t(*%s).%s = %s;" % (param.name, members[i], words[i] % source_words))
             else:
                 if param.type.double_word:
                     result.append("\tresult.%s = ((%s)%s + ((%s)%s << 32));" % (param.name, TYPES[64], words[0] % source_words, TYPES[64], words[1] % source_words))
@@ -593,10 +593,10 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
 
     # Return result
     if returning_struct:
-        result.append("\tresult.error = seL4_MessageInfo_get_label(output_tag);")
-        result.append("\treturn result;")
+        result.append("\tresult.error = output_tag.get_label();")
+        result.append("\tresult")
     else:
-        result.append("\treturn seL4_MessageInfo_get_label(output_tag);")
+        result.append("\toutput_tag.get_label()")
 
     #
     # }
@@ -681,32 +681,7 @@ def generate_stub_file(arch, input_files, output_file, use_only_ipc_buffer):
  * Automatically generated system call stubs.
  */
 
-#ifndef __LIBSEL4_SEL4_CLIENT_H
-#define __LIBSEL4_SEL4_CLIENT_H
 """);
-
-    # Emit the includes
-    result.append('\n'.join(map(lambda x: '#include <%s>' % x, INCLUDES)))
-
-    #
-    # Emit code to ensure that all of our type sizes are consistent with
-    # the compiler's.
-    #
-    result.append("""
-/*
- * The following code generates a compile-time error if the system call
- * stub generator has an incorrect understanding of how large a type is.
- *
- * If you receive a compile-time error here, you will need to adjust
- * the type information in the stub generator.
- */
-#define assert_size_correct(type, expected_bytes) \\
-        typedef unsigned long __type_##type##_size_incorrect[ \\
-                (sizeof(type) == expected_bytes) ? 1 : -1]
-""")
-    for x in types + arch_types[arch]:
-        result.append("assert_size_correct(%s, %d);" % (x.name, x.native_size_bits / 8))
-    result.append("")
 
     #
     # Generate structures needed to return results back to the user.
@@ -731,10 +706,6 @@ def generate_stub_file(arch, input_files, output_file, use_only_ipc_buffer):
     for (interface_name, method_name, method_id, inputs, outputs) in methods:
         result.append(generate_stub(arch, interface_name, method_name,
                 method_id, inputs, outputs, structs, use_only_ipc_buffer))
-
-    # Print footer.
-    result.append("#endif /* __LIBSEL4_SEL4_CLIENT_H */")
-    result.append("")
 
     # Write the output
     output = open(output_file, "w")
