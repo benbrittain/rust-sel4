@@ -528,7 +528,7 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     result.append("\tlet tag = seL4_MessageInfo::new(%s, 0, %d, %d);"  % (method_id, len(cap_expressions), len(input_expressions)))
     result.append("\tlet mut output_tag;")
     for i in range(min(num_mrs, max(input_param_words, output_param_words))):
-        result.append("\tseL4_Word mr%d;" % i)
+        result.append("\tlet mut mr%d: seL4_Word;" % i)
     result.append("")
 
     #
