@@ -15,6 +15,7 @@
 
 import argparse
 import sys
+from itertools import chain
 # install tempita using sudo apt-get install python-tempita or similar for your distro
 import tempita
 import xml.dom.minidom
@@ -35,25 +36,15 @@ pub enum InvocationLabel {
     {{for loop, label in looper(invocations)}}
     {{label}} = {{loop.index+1}},
     {{endfor}}
-    nInvocationLabels = {{len(invocations)+1}}
-}
-#[repr(C)]
-pub enum ArchInvocationLabel {
-    {{for loop, label in looper(invocations)}}
-    {{label}} = (InvocationLabel::nInvocationLabels as isize) + {{loop.index}},
-    {{endfor}}
-    nArchInvocationLabels
 }
 """
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate seL4 invocation API \
         constants and header files')
-    parser.add_argument('--xml', type=argparse.FileType('r'),
-            help='Name of xml file with invocation definitions', required=True)
     parser.add_argument('--dest', type=argparse.FileType('w'),
             help='Name of file to create', required=True)
+    parser.add_argument('files', nargs='+', help='XML files to parse invocations from')
 
     return parser.parse_args()
 
@@ -84,7 +75,7 @@ def generate(args, invocations):
 if __name__ == "__main__":
     args = parse_args()
 
-    invocations = parse_xml(args.xml)
-    args.xml.close()
+    invocations = chain.from_iterable(parse_xml(xml) for xml in args.files)
 
     generate(args, invocations)
+
