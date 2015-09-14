@@ -1095,6 +1095,5 @@ if __name__ == '__main__':
     options.names = pruned_names
 
     guard = re.sub(r'[^a-zA-Z0-9_]', '_', "foofile".upper())
-    print >>options.output, "#![allow(bad_style, unused_parens)]"
     for e in blocks.values() + unions.values():
         e.generate(options)
