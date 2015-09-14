@@ -1,0 +1,11 @@
+{
+    "llvm-target": "i686-unknown-linux-gnu",
+    "target-endian": "little",
+    "target-pointer-width": "32",
+    "os": "sel4",
+    "env": "none",
+    "arch": "x86",
+    "linker-is-gnu": true,
+    "executables": true,
+    "pre-link-args": ["-m", "32"]
+}
