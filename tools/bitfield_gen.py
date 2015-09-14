@@ -191,7 +191,7 @@ generator_template = \
 """impl %(block)s {
     #[inline(always)]
     pub fn new(%(args)s) -> %(block)s {
-        let mut %(block)s: %(block)s = unsafe { ::std::mem::zeroed() };
+        let mut %(block)s: %(block)s = unsafe { ::core::mem::zeroed() };
 
 %(word_inits)s
 %(field_inits)s
