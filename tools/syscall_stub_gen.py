@@ -569,7 +569,7 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
         if i < max(input_param_words, output_param_words):
             call_arguments.append("&mut mr%d" % i)
         else:
-            call_arguments.append("std::ptr::null_mut()")
+            call_arguments.append("::core::ptr::null_mut()")
     if use_only_ipc_buffer:
         result.append("\t/* Perform the call. */")
         result.append("\toutput_tag = seL4_Call(%s, tag);" % service_cap)
