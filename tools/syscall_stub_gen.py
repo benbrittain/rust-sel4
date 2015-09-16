@@ -525,7 +525,7 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     #
     if returning_struct:
         result.append("\tlet mut result: %s;" % return_type)
-    result.append("\tlet tag = seL4_MessageInfo::new(%s, 0, %d, %d);"  % (method_id, len(cap_expressions), len(input_expressions)))
+    result.append("\tlet tag = seL4_MessageInfo::new(InvocationLabel::%s, 0, %d, %d);"  % (method_id, len(cap_expressions), len(input_expressions)))
     result.append("\tlet mut output_tag;")
     for i in range(min(num_mrs, max(input_param_words, output_param_words))):
         result.append("\tlet mut mr%d: seL4_Word;" % i)

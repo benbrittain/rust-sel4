@@ -1,3 +1,3 @@
 [submodule "seL4"]
 	path = seL4
-	url = https://github.com/robigalia/seL4
+	url = https://github.com/seL4/seL4
