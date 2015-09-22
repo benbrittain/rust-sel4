@@ -36,9 +36,9 @@ pub enum SyscallId {
 {{for config, list in enum}}
     {{for syscall in list}}
     {{if len(config) > 0}}
-    #[cfg({{config}})]
+    #[cfg(feature = "SEL4_{config}")]
     {{endif}}
-    seL4_Sys{{syscall}} = {{syscall_number}},
+    {{syscall}} = {{syscall_number}},
     {{py:syscall_number -= 1}}
     {{endfor}}
 {{endfor}}

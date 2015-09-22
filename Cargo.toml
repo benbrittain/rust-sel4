@@ -17,6 +17,9 @@ build = "build.rs"
 
 [features]
 unstable = []
+SEL4_DEBUG = []
+SEL4_DANGEROUS_CODE_INJECTION = []
+SEL4_CONFIG_BENCHMARK = []
 
 [lib]
 path = "lib.rs"

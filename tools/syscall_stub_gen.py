@@ -76,6 +76,7 @@ TYPE_TRANS = {
     "seL4_Uint32": "u32",
     "seL4_Uint64": "u64",
     "seL4_Bool": "u8",
+    "seL4_CapData_t": "seL4_CapData",
 }
 
 def translate_type(name):
@@ -83,6 +84,17 @@ def translate_type(name):
         return TYPE_TRANS[name]
     else:
         return name
+
+def translate_expr(name):
+    if name == "type":
+        return "type_"
+    return name
+
+def construction(expr, param):
+    if isinstance(param.type, StructType):
+        return "%s { words: [%s] }" % (param.type.name, expr)
+    else:
+        return "%s as %s" % (expr, translate_type(param.type.name))
 
 class Type(object):
     """
@@ -198,7 +210,6 @@ class BitFieldType(Type):
         Type.__init__(self, name, size_bits)
 
     def c_expression(self, var_name, word_num=0):
-
         return "%s.words[%d]" % (var_name, word_num)
 
 class Parameter(object):
@@ -360,7 +371,7 @@ def generate_marshal_expressions(params, num_mrs, structs):
             expr = param.type.c_expression(param.name);
             expr = "(%s & %#x)" % (expr, (1 << num_bits) - 1)
             if target_offset:
-                expr = "(%s << %d)" % (expr, target_offset)
+                expr = "((%s as seL4_Word) << %d)" % (expr, target_offset)
             word_array[target_word].append(expr)
             return
 
@@ -381,7 +392,7 @@ def generate_marshal_expressions(params, num_mrs, structs):
         generate_param_code(param, first_bit, num_bits, words)
 
     # Return list of expressions.
-    return [" | ".join(x) for x in words if len(x) > 0]
+    return [" | ".join(map(lambda x: "(" + translate_expr(x) + " as seL4_Word)", x)) for x in words if len(x) > 0]
 
 def generate_unmarshal_expressions(params):
     """
@@ -524,11 +535,11 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
     # Setup variables we will need.
     #
     if returning_struct:
-        result.append("\tlet mut result: %s;" % return_type)
-    result.append("\tlet tag = seL4_MessageInfo::new(InvocationLabel::%s, 0, %d, %d);"  % (method_id, len(cap_expressions), len(input_expressions)))
-    result.append("\tlet mut output_tag;")
+        result.append("\tlet mut result: %s = ::core::mem::zeroed();" % return_type)
+    result.append("\tlet tag = seL4_MessageInfo::new(InvocationLabel::%s as u32, 0, %d, %d);"  % (method_id, len(cap_expressions), len(input_expressions)))
+    result.append("\tlet output_tag;")
     for i in range(min(num_mrs, max(input_param_words, output_param_words))):
-        result.append("\tlet mut mr%d: seL4_Word;" % i)
+        result.append("\tlet mut mr%d: seL4_Word = 0;" % i)
     result.append("")
 
     #
@@ -556,7 +567,7 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
             if input_expressions[i] == "type":
                 input_expressions[i] = "type_"
             if i < num_mrs:
-                result.append("\tmr%d = %s;" % (i, input_expressions[i]))
+                result.append("\tmr%d = %s as seL4_Word;" % (i, input_expressions[i]))
             else:
                 result.append("\tseL4_SetMR(%d, %s);" % (i, input_expressions[i]))
         result.append("")
@@ -602,16 +613,16 @@ def generate_stub(arch, interface_name, method_name, method_id, input_params, ou
                     result.append("\tresult.%s = ((%s)%s + ((%s)%s << 32));" % (param.name, TYPES[64], words[0] % source_words, TYPES[64], words[1] % source_words))
                 else:
                     for word in words:
-                        result.append("\tresult.%s = %s;" % (param.name, word % source_words))
+                        result.append("\tresult.%s = %s;" % (param.name, construction(word % source_words, param)))
 
         result.append("")
 
     # Return result
     if returning_struct:
-        result.append("\tresult.error = output_tag.get_label();")
+        result.append("\tresult.error = output_tag.get_label() as isize;")
         result.append("\tresult")
     else:
-        result.append("\toutput_tag.get_label()")
+        result.append("\toutput_tag.get_label() as isize")
 
     #
     # }
