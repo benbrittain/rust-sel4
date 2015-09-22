@@ -1,0 +1,11 @@
+{
+    "llvm-target": "arm-linux-gnueabihf",
+    "target-endian": "little",
+    "target-pointer-width": "32",
+    "os": "sel4",
+    "env": "gnueabihf",
+    "arch": "arm",
+    "linker-is-gnu": true,
+    "executables": true,
+    "linker": "arm-linux-gnueabi-gcc"
+}
