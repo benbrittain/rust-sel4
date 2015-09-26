@@ -171,11 +171,11 @@ pub unsafe fn seL4_Send(dest: seL4_CPtr, msgInfo: seL4_MessageInfo) {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::Send as seL4_Word),
-        "b" (dest),
-          "S" (msgInfo.words[0]),
-          "D" (seL4_GetMR(0)),
-          "c" (seL4_GetMR(1))
+        : "{ax}" (SyscallId::Send as seL4_Word),
+        "{bx}" (dest),
+          "{si}" (msgInfo.words[0]),
+          "{di}" (seL4_GetMR(0)),
+          "{cx}" (seL4_GetMR(1))
           : "%edx"
         : "volatile");
 }
@@ -209,11 +209,11 @@ pub unsafe fn seL4_SendWithMRs(dest: seL4_CPtr, msgInfo: seL4_MessageInfo,
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::Send as seL4_Word),
-        "b" (dest),
-          "S" (msgInfo.words[0]),
-          "D" (opt_deref!(mr0)),
-          "c" (opt_deref!(mr1))
+        : "{ax}" (SyscallId::Send as seL4_Word),
+        "{bx}" (dest),
+          "{si}" (msgInfo.words[0]),
+          "{di}" (opt_deref!(mr0)),
+          "{cx}" (opt_deref!(mr1))
           : "%edx"
         : "volatile");
 }
@@ -228,11 +228,11 @@ pub unsafe fn seL4_NBSend(dest: seL4_CPtr, msgInfo: seL4_MessageInfo) {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::NBSend as seL4_Word),
-        "b" (dest)
-          "S" (msgInfo.words[0]),
-          "D" (seL4_GetMR(0)),
-          "c" (seL4_GetMR(1))
+        : "{ax}" (SyscallId::NBSend as seL4_Word),
+        "{bx}" (dest)
+          "{si}" (msgInfo.words[0]),
+          "{di}" (seL4_GetMR(0)),
+          "{cx}" (seL4_GetMR(1))
           : "%edx"
         : "volatile");
 }
@@ -247,11 +247,11 @@ pub unsafe fn seL4_NBSendWithMRs(dest: seL4_CPtr, msgInfo: seL4_MessageInfo,
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::NBSend as seL4_Word),
-        "b" (dest),
-          "S" (msgInfo.words[0]),
-          "D" (opt_deref!(mr0)),
-          "c" (opt_deref!(mr1))
+        : "{ax}" (SyscallId::NBSend as seL4_Word),
+        "{bx}" (dest),
+          "{si}" (msgInfo.words[0]),
+          "{di}" (opt_deref!(mr0)),
+          "{cx}" (opt_deref!(mr1))
           : "%edx"
         : "volatile");
 }
@@ -266,10 +266,10 @@ pub unsafe fn seL4_Reply(msgInfo: seL4_MessageInfo) {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::Reply as seL4_Word),
-        "S" (msgInfo.words[0])
-          "D" (seL4_GetMR(0)),
-          "c" (seL4_GetMR(1))
+        : "{ax}" (SyscallId::Reply as seL4_Word),
+        "{si}" (msgInfo.words[0])
+          "{di}" (seL4_GetMR(0)),
+          "{cx}" (seL4_GetMR(1))
         : "%ebx", "%edx"
         : "volatile");
 }
@@ -284,10 +284,10 @@ pub unsafe fn seL4_ReplyWithMRs(msgInfo: seL4_MessageInfo,
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::Reply as seL4_Word),
-        "S" (msgInfo.words[0]),
-          "D" (opt_deref!(mr0))
-          "c" (opt_deref!(mr1))
+        : "{ax}" (SyscallId::Reply as seL4_Word),
+        "{si}" (msgInfo.words[0]),
+          "{di}" (opt_deref!(mr0))
+          "{cx}" (opt_deref!(mr1))
         : "%ebx", "%edx"
         : "volatile");
 }
@@ -302,17 +302,16 @@ pub unsafe fn seL4_Notify(dest: seL4_CPtr, msg: seL4_Word) {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::Send as seL4_Word),
-        "b" (dest),
-          "S" (seL4_MessageInfo::new(0, 0, 0, 1).words[0]),
-          "D" (msg)
+        : "{ax}" (SyscallId::Send as seL4_Word),
+        "{bx}" (dest),
+          "{si}" (seL4_MessageInfo::new(0, 0, 0, 1).words[0]),
+          "{di}" (msg)
         : "%ecx", "%edx"
         : "volatile");
 }
 
 #[inline(always)]
 pub unsafe fn seL4_Wait(src: seL4_CPtr, sender: *mut seL4_Word) -> seL4_MessageInfo {
-    // ERROR: "Already initialized this value register!"
     let mut info = seL4_MessageInfo { words: [0] };
     let badge: seL4_Word;
     let mr0: seL4_Word;
@@ -325,12 +324,12 @@ pub unsafe fn seL4_Wait(src: seL4_CPtr, sender: *mut seL4_Word) -> seL4_MessageI
           sysenter
           movl %ebp, %ecx
           popl %ebp"
-        : "=b" (badge),
-          "=S" (info.words[0]),
-          "=D" (mr0),
-          "=c" (mr1)
-        : "a" (SyscallId::Wait as seL4_Word),
-        "b" (src)
+        : "={bx}" (badge),
+          "={si}" (info.words[0]),
+          "={dx}" (mr0),
+          "={cx}" (mr1)
+        : "{ax}" (SyscallId::Wait as seL4_Word),
+        "{bx}" (src)
         : "%edx", "memory"
         : "volatile");
 
@@ -357,12 +356,12 @@ pub unsafe fn seL4_WaitWithMRs(src: seL4_CPtr, sender: *mut seL4_Word,
           sysenter
           movl %ebp, %ecx
           popl %ebp"
-        : "=b" (badge),
-        "=S" (info.words[0]),
-          "=D" (msg0),
-          "=c" (msg1)
-        : "a" (SyscallId::Wait as seL4_Word),
-        "b" (src)
+        : "={bx}" (badge),
+        "={si}" (info.words[0]),
+          "={di}" (msg0),
+          "={cx}" (msg1)
+        : "{ax}" (SyscallId::Wait as seL4_Word),
+        "{bx}" (src)
         : "%edx", "memory"
         : "volatile");
 
@@ -387,15 +386,15 @@ pub unsafe fn seL4_Call(mut dest: seL4_CPtr, msgInfo: seL4_MessageInfo) -> seL4_
           sysenter
           movl %ebp, %ecx
           popl %ebp"
-        : "=S" (info.words[0]),
-        "=D" (mr0),
-          "=c" (mr1),
-          "=b" (dest) /* dummy, tells GCC that ebx is clobbered (check if necessary) */
-        : "a" (SyscallId::Call as seL4_Word),
-        "b" (dest),
-          "S" (msgInfo.words[0]),
-          "D" (mr0),
-          "c" (mr1)
+        : "={si}" (info.words[0]),
+        "={di}" (mr0),
+          "={cx}" (mr1),
+          "={bx}" (dest) /* dummy, tells GCC that ebx is clobbered (check if necessary) */
+        : "{ax}" (SyscallId::Call as seL4_Word),
+        "{bx}" (dest),
+          "{si}" (msgInfo.words[0]),
+          "{di}" (mr0),
+          "{cx}" (mr1)
           : "%edx", "memory"
         : "volatile");
 
@@ -431,15 +430,15 @@ pub unsafe fn seL4_CallWithMRs(mut dest: seL4_CPtr, msgInfo: seL4_MessageInfo,
           sysenter
           movl %ebp, %ecx
           popl %ebp"
-        : "=S" (info.words[0])
-        "=D" (msg0),
-          "=c" (msg1),
-          "=b" (dest) /* dummy, tells GCC that ebx is clobbered (check if still necessary) */
-        : "a" (SyscallId::Call as seL4_Word),
-        "b" (dest)
-          "S" (msgInfo.words[0]),
-          "D" (msg0),
-          "c" (msg1)
+        : "={si}" (info.words[0])
+        "={di}" (msg0),
+          "={cx}" (msg1),
+          "={bx}" (dest) /* dummy, tells GCC that ebx is clobbered (check if still necessary) */
+        : "{ax}" (SyscallId::Call as seL4_Word),
+        "{bx}" (dest)
+          "{si}" (msgInfo.words[0]),
+          "{di}" (msg0),
+          "{cx}" (msg1)
           : "%edx", "memory"
         : "volatile");
 
@@ -465,15 +464,15 @@ pub unsafe fn seL4_ReplyWait(dest: seL4_CPtr, msgInfo: seL4_MessageInfo,
           sysenter
           movl %ebp, %ecx
           popl %ebp"
-        : "=b" (badge),
-        "=S" (info.words[0]),
-          "=D" (mr0),
-          "=c" (mr1)
-        : "a" (SyscallId::ReplyWait as seL4_Word),
-        "b" (dest),
-          "S" (msgInfo.words[0]),
-          "D" (mr0),
-          "c" (mr1)
+        : "={bx}" (badge),
+        "={si}" (info.words[0]),
+          "={di}" (mr0),
+          "={cx}" (mr1)
+        : "{ax}" (SyscallId::ReplyWait as seL4_Word),
+        "{bx}" (dest),
+          "{si}" (msgInfo.words[0]),
+          "{di}" (mr0),
+          "{cx}" (mr1)
           : "%edx", "memory"
         : "volatile");
 
@@ -512,14 +511,14 @@ pub unsafe fn seL4_ReplayWaitWithMRs(dest: seL4_CPtr, msgInfo: seL4_MessageInfo,
           sysenter
           movl %ebp, %ecx
           popl %ebp"
-        : "=b" (badge),
-        "=S" (info.words[0]),
-          "=D" (msg0),
-          "=c" (msg1)
-        : "b" (dest),
-        "S" (msgInfo.words[0]),
-          "D" (msg0),
-          "c" (msg1)
+        : "={bx}" (badge),
+        "={si}" (info.words[0]),
+          "={di}" (msg0),
+          "={cx}" (msg1)
+        : "{bx}" (dest),
+        "{si}" (msgInfo.words[0]),
+          "{di}" (msg0),
+          "{cx}" (msg1)
         : "%edx", "memory"
         : "volatile");
 
@@ -539,7 +538,7 @@ pub unsafe fn seL4_Yield() {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::Yield as seL4_Word)
+        : "{ax}" (SyscallId::Yield as seL4_Word)
         : "%ebx", "%ecx", "%edx", "%esi", "%edi", "memory"
         : "volatile");
 }
@@ -554,8 +553,8 @@ pub unsafe fn seL4_DebugPutChar(c: u8) {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::DebugPutChar as seL4_Word),
-        "b" (c)
+        : "{ax}" (SyscallId::DebugPutChar as seL4_Word),
+        "{bx}" (c)
         : "%ecx", "%edx", "%esi", "%edi", "memory"
         : "volatile");
 }
@@ -570,7 +569,7 @@ pub unsafe fn seL4_DebugHalt() {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::DebugHalt as seL4_Word)
+        : "{ax}" (SyscallId::DebugHalt as seL4_Word)
         : "%ebx", "%ecx", "%edx", "%esi", "%edi", "memory"
         : "volatile");
 }
@@ -585,7 +584,7 @@ pub unsafe fn seL4_DebugSnapshot() {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::DebugSnapshot as seL4_Word)
+        : "{ax}" (SyscallId::DebugSnapshot as seL4_Word)
         : "%ebx", "%ecx", "%edx", "%esi", "%edi", "memory"
         : "volatile");
 }
@@ -600,9 +599,9 @@ pub unsafe fn seL4_DebugCapIdentify(cap: seL4_CPtr) -> u32 {
           1:
           sysenter
           popl %ebp"
-        : "=b" (_cap)
-        : "a" (SyscallId::DebugCapIdentify as seL4_Word),
-          "b" (_cap)
+        : "={bx}" (_cap)
+        : "{ax}" (SyscallId::DebugCapIdentify as seL4_Word),
+          "{bx}" (_cap)
           : "%ecx", "%edx", "%esi", "%edi", "memory"
         : "volatile");
     _cap
@@ -620,8 +619,8 @@ pub unsafe fn seL4_DebugNameThread(tcb: seL4_CPtr, name: &[u8]) {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::DebugNameThread as seL4_Word),
-        "b" (tcb)
+        : "{ax}" (SyscallId::DebugNameThread as seL4_Word),
+        "{bx}" (tcb)
         : "%ecx", "%edx", "%esi", "%edi", "memory"
         : "volatile");
 }
@@ -637,9 +636,9 @@ pub unsafe fn seL4_DebugRun(userfn: extern fn(*mut u8), userarg: *mut u8) {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::DebugRun as seL4_Word),
-        "b" (userfnptr),
-          "S" (userarg)
+        : "{ax}" (SyscallId::DebugRun as seL4_Word),
+        "{bx}" (userfnptr),
+          "{si}" (userarg)
           : "%ecx", "%edx", "%edi", "memory"
         : "volatile");
 }
@@ -654,7 +653,7 @@ pub unsafe fn seL4_BenchmarkResetLog() {
           sysenter
           popl %ebp"
         :
-        : "a" (SyscallId::BenchmarkResetLog as seL4_Word)
+        : "{ax}" (SyscallId::BenchmarkResetLog as seL4_Word)
         : "%ecx", "%edx", "%edi", "memory"
         : "volatile");
 }
@@ -669,10 +668,10 @@ pub unsafe fn seL4_BenchmarkDumpLog(start: seL4_Word, size: seL4_Word) -> u32 {
           1:
           sysenter
           popl %ebp"
-        : "=b" (dump)
-        : "a" (SyscallId::BenchmarkDumpLog as seL4_Word),
-          "b" (start),
-          "S" (size)
+        : "={bx}" (dump)
+        : "{ax}" (SyscallId::BenchmarkDumpLog as seL4_Word),
+          "{bx}" (start),
+          "{si}" (size)
         : "%ecx", "%edx", "%edi", "memory"
         : "volatile");
     dump
@@ -688,8 +687,8 @@ pub unsafe fn seL4_BenchmarkLogSize() -> u32 {
           1:
           sysenter
           popl %ebp"
-        : "=b" (ret)
-        : "a" (SyscallId::BenchmarkLogSize as seL4_Word)
+        : "={bx}" (ret)
+        : "{ax}" (SyscallId::BenchmarkLogSize as seL4_Word)
         : "%ecx", "%edx", "%edi", "memory"
         : "volatile");
     ret
