@@ -10,6 +10,7 @@
 #![no_std]
 #![feature(asm, no_std)]
 #![allow(bad_style, unused_parens, unused_assignments)]
+#![doc(html_root_url = "https://doc.robigalia.org/")]
 
 #[cfg(all(target_arch = "x86", target_pointer_width = "32"))]
 include!("arch/x86.rs");
