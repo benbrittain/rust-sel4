@@ -33,3 +33,7 @@ include!(concat!(env!("OUT_DIR"), "/arm_syscall_stub.rs"));
 
 include!(concat!(env!("OUT_DIR"), "/types.rs"));
 include!(concat!(env!("OUT_DIR"), "/syscalls.rs"));
+
+//include!(concat!(env!("OUT_DIR"), "/bootinfo.rs"));
+#[cfg(all(target_arch = "x86", target_pointer_width = "32"))]
+include!("arch/bootinfo.rs");
