@@ -7,5 +7,5 @@
     "arch": "x86",
     "linker-is-gnu": true,
     "executables": true,
-    "pre-link-args": ["-m", "32"]
+    "pre-link-args": ["-m32"]
 }
